@@ -1,5 +1,5 @@
 ---
-name: mayar
+name: mayar-v2
 display_name: Mayar
 version: "1.0.0"
 description: >
