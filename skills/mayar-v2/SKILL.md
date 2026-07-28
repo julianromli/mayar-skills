@@ -1,7 +1,7 @@
 ---
 name: mayar
 display_name: Mayar
-version: "2.0.0-draft"
+version: "1.0.0"
 description: >
   Mayar payments & billing API (Indonesia: QRIS, VA, e-wallet, kartu).
   BUILD branch: pakai saat user minta integrasi pembayaran ditulis ke dalam app mereka
@@ -122,5 +122,7 @@ Untuk parsing programatik, tambahkan `--json`.
 **Envelope V2** — `{ statusCode, messages, data }`. Sebagian write endpoint memakai `message` (singular). Parse defensif: `body.messages ?? body.message`. Tanggal: beberapa endpoint menerima ISO 8601 tapi mengembalikan epoch ms (`expiredAt`); normalisasi di sisi client.
 
 **Error** — `{ statusCode, messages }` dengan detail minim (`Validation Error` tanpa field). Saat kena 400: cocokkan ulang body request dengan schema dari `mayar docs <topic> --json`, jangan menebak. `429` pada create = duplikat terdeteksi, tunggu ±1 menit lalu retry dengan payload identik.
+
+**Payment link name unik** — Mayar tolak create dengan error `"already exist"` kalau nama sama pernah dipakai. Selalu append timestamp atau UUID: `name: \`${productName} #${Date.now()}\``. Error ini muncul sebagai HTTP 200 dengan `statusCode: 429` di body.
 
 **Rate limit** — 50 req/menit per API key, header `Retry-After` disediakan. Jarakkan polling status ≥ 5 detik.
