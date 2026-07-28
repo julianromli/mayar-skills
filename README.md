@@ -8,14 +8,13 @@ Agent skills untuk integrasi [Mayar](https://mayar.id) (payment & billing Indone
 
 ```
 skills/
-└── mayar-v2/
-    ├── SKILL.md                 playbook utama: 6 step (RECON → INTERVIEW → IMPLEMENT → SECURE → VERIFY → HANDOFF)
-    ├── commands.md              katalog CLI (branch ops)
-    └── recipes/
-        ├── _pattern.md          pola integrasi framework-agnostic (single source of truth)
-        ├── nextjs.md            wiring Next.js App Router
-        ├── tanstack-start.md    wiring TanStack Start server routes
-        └── vite-react.md        React Vite SPA (via serverless function / mini server)
+├── SKILL.md                 playbook utama: 6 step (RECON → INTERVIEW → IMPLEMENT → SECURE → VERIFY → HANDOFF)
+├── commands.md              katalog CLI (branch ops)
+└── recipes/
+    ├── _pattern.md          pola integrasi framework-agnostic (single source of truth)
+    ├── nextjs.md            wiring Next.js App Router
+    ├── tanstack-start.md    wiring TanStack Start server routes
+    └── vite-react.md        React Vite SPA (via serverless function / mini server)
 ```
 
 ## Bedanya dengan skill resmi (v1)
@@ -40,16 +39,16 @@ git clone https://github.com/julianromli/mayar-skills.git
 cd mayar-skills
 
 # Claude Code (backup dulu kalau ada v1)
-cp -r skills/mayar-v2 ~/.claude/skills/mayar
+cp -r skills ~/.claude/skills/mayar
 
 # Cursor (global)
-cp -r skills/mayar-v2 ~/.cursor/skills/mayar
+cp -r skills ~/.cursor/skills/mayar
 
 # Cursor (per project)
-cp -r skills/mayar-v2 <project>/.cursor/skills/mayar
+cp -r skills <project>/.cursor/skills/mayar
 
 # Codex
-cp -r skills/mayar-v2 ~/.codex/skills/mayar
+cp -r skills ~/.codex/skills/mayar
 ```
 
 Reload/restart agent setelah copy.
