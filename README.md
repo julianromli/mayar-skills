@@ -56,21 +56,54 @@ Reload/restart agent setelah copy.
 
 ## Pemakaian
 
-**Build (integrasi ke app):**
+### Build (integrasi ke app)
+
+Prompt umum, agent menjalankan playbook lengkap (recon → interview → implement → secure → verify → handoff):
 
 ```
 integrasi payment Mayar di web ini
 ```
 
-Agent menjalankan playbook: recon codebase → interview 5 pertanyaan → implement ikut recipe stack → secure webhook → verify sandbox → checklist go-live.
+Variasi per model jualan (jawaban INTERVIEW menentukan endpoint yang dipakai):
 
-**Ops (admin terminal):**
+| Contoh prompt | Model | Endpoint utama |
+|---|---|---|
+| `pasang pembayaran buat jual ebook saya` | One-off payment | payment link |
+| `buatkan halaman checkout produk digital, habis bayar user dapat link download` | One-off + fulfillment | payment link + webhook provisioning |
+| `integrasi invoice Mayar, saya freelancer mau tagih klien per project` | Invoice itemized | invoice create + `extraData` |
+| `buat sistem langganan bulanan untuk konten premium saya` | Membership/subscription | membership register + invoice per term |
+| `user beli credit, tiap panggil fitur AI credit-nya kepotong` | Credit usage-based | credit add/spend/balance |
+| `jual lisensi software, user aktivasi pakai kode lisensi` | SaaS/software license | saas activate/verify |
+| `buat QRIS on-demand di kasir untuk nominal berapapun` | QRIS dynamic | qrcode create |
 
-```
-cek 10 invoice terakhir di mayar
-```
+Variasi per situasi:
 
-Agent menjalankan CLI langsung (`npx -y mayar@latest invoice list`, dst).
+| Contoh prompt | Yang terjadi |
+|---|---|
+| `integrasi payment Mayar, jawab default semua` | Agent jalan pakai semua default INTERVIEW (sandbox, payment link, dst) |
+| `web saya TanStack Start, pasang payment Mayar` | Agent ikut `recipes/tanstack-start.md` |
+| `project saya React Vite doang, bisa terima pembayaran?` | Agent jelaskan butuh 1 function kecil, ikut `recipes/vite-react.md` |
+| `webhook pembayaran saya kok double terus, cek` | Agent audit handler: dedupe + verify-by-fetch (Step SECURE) |
+| `siapkan go-live, sekarang masih sandbox` | Agent kerjakan checklist HANDOFF: ganti key production, register webhook production |
+
+### Ops (admin terminal)
+
+Agent menjalankan CLI langsung. Contoh:
+
+| Contoh prompt | Command yang jalan |
+|---|---|
+| `saldo mayar saya berapa` | `mayar balance` |
+| `cek 10 invoice terakhir` | `mayar invoice list --limit 10` |
+| `transaksi hari ini gimana` | `mayar tx daily` |
+| `ada berapa transaksi belum dibayar` | `mayar tx unpaid` |
+| `buatkan produk membership tiers-nya 3` | `mayar product create --type membership` |
+| `register webhook https://app.com/hooks/mayar` | `mayar webhook register <url>` |
+| `webhook terakhir gagal mana, retry` | `mayar webhook history` + `mayar webhook retry <id>` |
+| `cari customer email budi@gmail.com` | `mayar customer search budi@gmail.com` |
+| `kirim magic link portal ke customer itu` | `mayar customer magic-link <email>` |
+| `buat QRIS 50 ribu` | `mayar qrcode 50000` |
+| `verifikasi kode lisensi ABC123 untuk produk X` | `mayar saas verify ABC123 <productId>` |
+| `pindah ke sandbox dulu` | semua command jalan dengan `--sandbox` |
 
 ## Prasyarat
 
