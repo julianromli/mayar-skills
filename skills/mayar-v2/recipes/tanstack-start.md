@@ -87,7 +87,7 @@ export const Route = createFileRoute("/api/webhooks/mayar")({
         if (processed.has(detail.id)) return Response.json({ ok: true });
         processed.add(detail.id);
 
-        await fulfill(tx.customerEmail, tx.productId);
+        await fulfill(detail.customer.email, detail.paymentLink.id);
         return Response.json({ ok: true });
       },
     },

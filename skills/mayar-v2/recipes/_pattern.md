@@ -63,9 +63,14 @@ export function createPaymentLink(input: {
   });
 }
 
-// Konfirmasi path persisnya: npx -y mayar@latest docs transaction --json
 export function getTransaction(id: string) {
-  return mayarFetch<{ id: string; status: string; amount: number }>(`/transactions/${id}`);
+  return mayarFetch<{
+    id: string;
+    status: string;
+    amount: number;
+    customer: { id: string; email: string; name: string };
+    paymentLink: { id: string; type: string };
+  }>(`/transactions/${id}`)
 }
 ```
 

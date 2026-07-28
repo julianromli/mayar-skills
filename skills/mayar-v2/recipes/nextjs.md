@@ -78,7 +78,7 @@ export async function POST(req: Request) {
   if (processed.has(detail.id)) return NextResponse.json({ ok: true });
   processed.add(detail.id);
 
-  await fulfill(tx.customerEmail, tx.productId);
+  await fulfill(detail.customer.email, detail.paymentLink.id);
   return NextResponse.json({ ok: true });
 }
 ```
