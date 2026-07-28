@@ -14,7 +14,7 @@ MAYAR_ENV=sandbox
 APP_URL=http://localhost:3000
 ```
 
-## Checkout — `app/routes/api/checkout.ts`
+## Checkout — `src/routes/api/checkout.ts`
 
 ```ts
 import { createFileRoute } from "@tanstack/react-router";
@@ -55,7 +55,7 @@ export function BuyButton() {
 }
 ```
 
-## Webhook — `app/routes/api/webhooks/mayar.ts`
+## Webhook — `src/routes/api/webhooks/mayar.ts`
 
 ```ts
 import { createFileRoute } from "@tanstack/react-router";
