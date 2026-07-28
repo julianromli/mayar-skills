@@ -50,6 +50,9 @@ cp -r skills/mayar-v2 <project>/.cursor/skills/mayar
 
 # Codex
 cp -r skills/mayar-v2 ~/.codex/skills/mayar
+
+# Hermes
+cp -r skills/mayar-v2 ~/.hermes/skills/mayar
 ```
 
 Reload/restart agent setelah copy.
