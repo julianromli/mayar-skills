@@ -32,8 +32,12 @@ CLI dipakai via `npx -y mayar@latest ...` (selalu latest, tanpa install). Di kod
 ## Setup (berlaku untuk build & ops)
 
 1. Cek auth: `npx -y mayar@latest whoami --json`. `"valid": true` = lanjut.
-2. Kalau invalid, minta API key ke user (web.mayar.id → Integration → API Key), lalu:
-   `npx -y mayar@latest api-key <key>` atau set env `MAYAR_API_KEY`.
+2. Kalau invalid, tanya environment dulu, baru minta API key ke URL yang sesuai:
+   - **Sandbox** (recommended untuk awal): ambil key di [web.mayar.club](https://web.mayar.club) → Integration → API Key
+   - **Production**: ambil key di [web.mayar.id](https://web.mayar.id) → Integration → API Key
+
+   Set key: `npx -y mayar@latest api-key <key>` atau set env `MAYAR_API_KEY`.
+
 3. Pilih environment:
    - **build**: default sandbox (`api.mayar.club`, flag `--sandbox`). Pindah production tinggal ganti flag/env, bukan ganti kode.
    - **ops**: tanya user kalau tidak jelas dari konteks; default production.
