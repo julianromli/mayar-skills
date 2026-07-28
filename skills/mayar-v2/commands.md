@@ -110,7 +110,7 @@ npx -y mayar@latest webhook new-history
 npx -y mayar@latest webhook retry <historyId>
 ```
 
-## Membership, Credit, & Licensing
+## Membership & Licensing
 
 ```bash
 npx -y mayar@latest membership members --productId <id>
@@ -121,6 +121,20 @@ npx -y mayar@latest saas deactivate <licenseCode> <productId>
 npx -y mayar@latest saas verify <licenseCode> <productId>
 npx -y mayar@latest software verify <licenseCode> <productId>
 ```
+
+## Credit (API only — tidak ada subcommand CLI)
+
+Credit usage-based dikelola via HTTP API langsung, bukan CLI. Gunakan `mayarFetch` dari `_pattern.md`:
+
+| Aksi | Method | Path |
+|---|---|---|
+| Tambah credit customer | POST | `/customers/{customerId}/credits/add` |
+| Kurangi credit (spend) | POST | `/customers/{customerId}/credits/spend` |
+| Cek saldo credit | GET | `/customers/{customerId}/credits/balance` |
+| Riwayat credit | GET | `/customers/{customerId}/credits/history` |
+| Register customer ke produk credit | POST | `/customers/register-credit-usage` |
+
+Konfirmasi path & body schema via `npx -y mayar@latest docs add-customer-credit --json`.
 
 ## Global Flags
 

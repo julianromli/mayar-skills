@@ -61,6 +61,12 @@ export function BuyButton() {
 import { createFileRoute } from "@tanstack/react-router";
 import { getTransaction } from "../../../lib/mayar";
 
+interface WebhookPayload {
+  event?: string;
+  type?: string;
+  data?: { id: string };
+}
+
 // TODO: ganti verify-by-fetch dengan signature verification saat Mayar merilis HMAC webhook.
 // Produksi: ganti Set dengan tabel DB processedTransactions.
 const processed = new Set<string>();
@@ -74,7 +80,7 @@ export const Route = createFileRoute("/api/webhooks/mayar")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const payload = await request.json();
+        const payload = (await request.json()) as WebhookPayload;
         const tx = payload.data ?? {};
         if ((payload.event ?? payload.type) !== "payment.received" || !tx.id) {
           return Response.json({ ok: true });

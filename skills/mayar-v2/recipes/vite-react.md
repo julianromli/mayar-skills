@@ -1,92 +1,97 @@
-# Recipe: React + Vite (SPA murni)
+# Recipe: React Vite (SPA + mini server)
 
-Vite SPA tidak punya server runtime. Dua hal mustahil di SPA murni: menyimpan `MAYAR_API_KEY` (bundle JS bisa dibaca siapa saja) dan menerima webhook (butuh endpoint publik). Jadi butuh **satu backend kecil**; kabar baiknya cukup 2 route.
+Pola, helper `lib/mayar.ts`, dan logika webhook: `_pattern.md`. File ini hanya wiring untuk SPA React Vite.
 
-Pola & helper: `_pattern.md`. File ini opsi backend + wiring SPA.
-
-## Pilih satu opsi backend (INTERVIEW Step 1)
+SPA murni tidak punya server runtime — semua Mayar calls (create payment link, webhook handler) **wajib** melewati minimal 1 server endpoint kecil. Dua opsi:
 
 | Opsi | Kapan dipilih |
 |---|---|
-| **A. Serverless function** (Cloudflare Workers / Vercel / Netlify) | Default. Gratis, deploy cepat, URL publik langsung ada untuk webhook |
-| **B. Mini server** (Hono/Express) | User sudah punya VPS/server sendiri |
-| **C. Tanpa kode sama sekali** | User cuma butuh jualan cepat: buat link via CLI (ops), tempel URL-nya di SPA. Bukan integrasi penuh (tanpa provisioning otomatis) |
+| **A — Vite + Express/Hono mini server** | Project sudah ada backend terpisah, atau mau semua dalam satu repo |
+| **B — Cloudflare Workers** | Deploy static ke CF Pages, handler di Workers |
 
-## Opsi A: Cloudflare Worker (contoh)
+---
 
-Catatan Workers (terverifikasi docs resmi): secret/env dibaca dari **parameter `env`** di handler, bukan `process.env` (kecuali pakai flag `nodejs_compat`). Karena helper `_pattern.md` membaca `process.env`, tambahkan adaptor kecil ini di Worker:
+## Opsi A: Vite + Hono mini server
 
-```ts
-// mayar-init.ts — adaptor env Workers
-let KEY = "";
-export function initMayar(env: { MAYAR_API_KEY: string; MAYAR_ENV?: string }) {
-  KEY = env.MAYAR_API_KEY;
-}
-export function apiKey() {
-  return KEY;
-}
+### Struktur
+
+```
+src/          ← React SPA (Vite)
+server/
+  index.ts    ← Hono server (checkout + webhook)
+  mayar.ts    ← helper dari _pattern.md
+.env
 ```
 
-Lalu di helper, ganti `process.env.MAYAR_API_KEY` menjadi `apiKey()`. `MAYAR_ENV` tetap dibaca dari `env.MAYAR_ENV` saat init.
+### Env
 
-`src/index.ts` di project Worker terpisah (satu folder kecil, `wrangler deploy`):
-
-```ts
-import { initMayar } from "./mayar-init";
-import { createPaymentLink, getTransaction } from "./mayar"; // helper _pattern.md + adaptor di atas
-
-interface Env {
-  MAYAR_API_KEY: string;
-  MAYAR_ENV?: string;
-}
-
-const processed = new Set<string>(); // produksi: KV/D1, bukan memory
-
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    initMayar(env);
-    const url = new URL(request.url);
-
-    if (url.pathname === "/api/checkout" && request.method === "POST") {
-      const product = await createPaymentLink({
-        name: "Akses Pro 1 Bulan",
-        description: "Upgrade ke Pro",
-        amount: 150000,
-        redirectUrl: "https://<domain-spa>/thanks", // route SPA biasa
-      });
-      return Response.json({ url: product.link });
-    }
-
-    if (url.pathname === "/api/webhooks/mayar" && request.method === "POST") {
-      const payload: any = await request.json();
-      const tx = payload.data ?? {};
-      if ((payload.event ?? payload.type) !== "payment.received" || !tx.id) {
-        return Response.json({ ok: true });
-      }
-      const detail = await getTransaction(tx.id); // bukti dari API
-      const paid = ["paid", "success", "settled"].includes(String(detail.status).toLowerCase());
-      if (!paid) return Response.json({ ok: true });
-      if (processed.has(detail.id)) return Response.json({ ok: true });
-      processed.add(detail.id);
-      // fulfill(tx.customerEmail, tx.productId)
-      return Response.json({ ok: true });
-    }
-
-    return new Response("not found", { status: 404 });
-  },
-};
+```bash
+MAYAR_API_KEY=paste_key_di_sini
+MAYAR_ENV=production
+APP_URL=http://localhost:3000
 ```
 
-Env di Worker: `npx wrangler secret put MAYAR_API_KEY` + var `MAYAR_ENV` di wrangler config. Sertakan CORS header kalau SPA dan Worker beda domain (`Access-Control-Allow-Origin` untuk origin SPA).
+### Server — `server/index.ts`
 
-## Wiring SPA (berlaku semua opsi)
+```ts
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+import { createPaymentLink, getTransaction } from "./mayar";
+
+const app = new Hono();
+
+// Checkout
+app.post("/api/checkout", async (c) => {
+  const product = await createPaymentLink({
+    name: "Akses Pro",
+    description: "Upgrade ke Pro",
+    amount: 150000,
+    redirectUrl: `${process.env.APP_URL}/thanks`,
+  });
+  return c.json({ url: product.link });
+});
+
+// Webhook
+// TODO: ganti verify-by-fetch dengan signature verification saat Mayar merilis HMAC webhook.
+// Produksi: ganti Set dengan tabel DB processedTransactions.
+const processed = new Set<string>();
+
+interface WebhookPayload {
+  event?: string;
+  type?: string;
+  data?: { id: string };
+}
+
+app.post("/api/webhooks/mayar", async (c) => {
+  const payload = await c.req.json<WebhookPayload>();
+  const tx = payload.data ?? {};
+  if ((payload.event ?? payload.type) !== "payment.received" || !tx.id) {
+    return c.json({ ok: true });
+  }
+
+  const detail = await getTransaction(tx.id); // bukti dari API
+  const paid = ["paid", "success", "settled"].includes(String(detail.status).toLowerCase());
+  if (!paid) return c.json({ ok: true });
+
+  if (processed.has(detail.id)) return c.json({ ok: true });
+  processed.add(detail.id);
+
+  // PROVISIONING: idempotent — beri akses / kirim download / upgrade akun.
+  console.log("fulfill", detail.customer.email, detail.paymentLink.id);
+  return c.json({ ok: true });
+});
+
+serve({ fetch: app.fetch, port: 3001 });
+```
+
+### Tombol beli (React component)
 
 ```tsx
 export function BuyButton() {
   return (
     <button
       onClick={async () => {
-        const r = await fetch("https://<worker-atau-server>/api/checkout", { method: "POST" });
+        const r = await fetch("/api/checkout", { method: "POST" });
         const { url } = await r.json();
         window.location.href = url;
       }}
@@ -97,17 +102,80 @@ export function BuyButton() {
 }
 ```
 
-`redirectUrl` mengarah ke route SPA (contoh `/thanks` via React Router). Halaman thanks bersifat informatif; status bayar sebenarnya tetap dari webhook/re-fetch, bukan dari URL.
+Vite dev server proxy ke Hono dengan tambahan di `vite.config.ts`:
+
+```ts
+server: {
+  proxy: {
+    "/api": "http://localhost:3001",
+  },
+},
+```
+
+---
+
+## Opsi B: Cloudflare Workers
+
+Di Workers, env dibaca dari parameter `env` handler — **bukan** `process.env`. Adaptasi helper:
+
+```ts
+// worker.ts
+import { createPaymentLink, getTransaction } from "./mayar";
+
+interface Env {
+  MAYAR_API_KEY: string;
+  MAYAR_ENV: string;
+  APP_URL: string;
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/checkout" && request.method === "POST") {
+      // inject env ke helper sebelum call
+      process.env.MAYAR_API_KEY = env.MAYAR_API_KEY;
+      process.env.MAYAR_ENV = env.MAYAR_ENV;
+      const product = await createPaymentLink({
+        name: "Akses Pro",
+        description: "Upgrade ke Pro",
+        amount: 150000,
+        redirectUrl: `${env.APP_URL}/thanks`,
+      });
+      return Response.json({ url: product.link });
+    }
+
+    return new Response("Not found", { status: 404 });
+  },
+};
+```
+
+Atau refaktor `mayarFetch` agar terima `apiKey` eksplisit (lebih clean untuk Workers):
+
+```ts
+export async function mayarFetch<T>(path: string, apiKey: string, env = "production", init?: RequestInit): Promise<T> {
+  const BASE = env === "production"
+    ? "https://api.mayar.id/hl/v2"
+    : "https://api.mayar.club/hl/v2";
+  // ... rest sama
+}
+```
+
+---
 
 ## Test
 
 ```bash
-npx -y mayar@latest --sandbox webhook register https://<worker>/api/webhooks/mayar
+# Opsi A
+npx -y mayar@latest webhook register https://<tunnel>/api/webhooks/mayar
+
+# Tunnel lokal (belum punya domain)
+cloudflared tunnel --url http://localhost:3001
 ```
 
 ## Checklist
 
-- [ ] Tidak ada `MAYAR_API_KEY` di bundle SPA (cek: `grep -r MAYAR dist/` kosong)
-- [ ] Transaksi sandbox `paid`, provisioning jalan
+- [ ] Transaksi `paid`, `fulfill` tereksekusi
 - [ ] Webhook duplikat tidak double-fulfill
-- [ ] Go-live: key production + webhook URL production
+- [ ] Go-live: `MAYAR_ENV=production` + key production + webhook URL production
+- [ ] Workers: env di `wrangler.toml` `[vars]`, secret via `wrangler secret put MAYAR_API_KEY`
