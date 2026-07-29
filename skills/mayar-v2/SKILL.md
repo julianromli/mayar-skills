@@ -1,7 +1,7 @@
 ---
 name: mayar-v2
 display_name: Mayar
-version: "1.1.0"
+version: "1.2.0"
 description: >
   Mayar payments & billing API (Indonesia: QRIS, VA, e-wallet, kartu).
   BUILD branch: pakai saat user minta integrasi pembayaran ditulis ke dalam app mereka
@@ -10,8 +10,16 @@ description: >
   hanya kode Mayar-nya saja.
   OPS branch: pakai saat user minta aksi admin/terminal di akun Mayar mereka
   (balance, list invoices/transactions/customers, buat produk, register webhook).
-  Triggers: mayar, payment gateway indonesia, QRIS, billing, langganan, subscription,
-  invoice, payment link.
+triggers:
+  - mayar
+  - payment gateway indonesia
+  - QRIS
+  - billing
+  - langganan
+  - subscription
+  - invoice
+  - payment link
+  - integrasi pembayaran
 env:
   MAYAR_API_KEY:
     description: Mayar API key. web.mayar.id → Integration → API Key.
@@ -54,7 +62,13 @@ Done when: `whoami` valid dan environment terpilih eksplisit.
 
 Scan proyek sebelum bertanya apa pun: framework & bahasa (package.json, composer.json, requirements.txt), package manager, file `.env*` yang ada (jangan baca isi secret, cukup catat nama var), direktori routes/api, halaman/komponen yang sudah ada (pricing, product, dashboard, landing), dan kode pembayaran lama kalau ada.
 
-Done when: kamu bisa menyebutkan stack, lokasi route handler, lokasi file env, dan halaman-halaman yang relevan dengan monetisasi — tanpa bertanya ke user.
+Setelah stack diketahui, **baca file recipe yang relevan** sebelum lanjut ke INTERVIEW:
+- TanStack Start → `recipes/tanstack-start.md`
+- Next.js → `recipes/nextjs.md`
+- React Vite SPA / Cloudflare Workers → `recipes/vite-react.md`
+- Stack lain → `recipes/_pattern.md`
+
+Done when: kamu bisa menyebutkan stack, lokasi route handler, lokasi file env, halaman-halaman yang relevan dengan monetisasi, dan recipe yang akan dipakai — tanpa bertanya ke user.
 
 ### Step 1: INTERVIEW
 
@@ -72,14 +86,16 @@ Setiap pertanyaan wajib menggunakan format pilihan ganda dengan jawaban recommen
 
 Urutan pertanyaan (skip yang sudah diketahui dari RECON):
 
-1. **Environment** — sandbox dulu, atau langsung production?
-2. **Model jualan** — apa yang dijual, dan bagaimana cara jualnya? (one-off, invoice, langganan, credit, lisensi)
-3. **CTA "Beli"** — tombol beli atau checkout mau ada di mana di app? (halaman yang sudah ada, halaman baru, modal, dll.)
-4. **Pricing page** — app perlu halaman pricing yang menampilkan plan/harga, atau sudah ada, atau tidak perlu?
-5. **Post-payment UX** — setelah bayar sukses, apa yang terjadi di UI? (redirect ke halaman tertentu, modal ditutup, halaman diupdate, dll.)
-6. **Fulfillment** — user mendapatkan akses ke apa setelah bayar? Ini menentukan kode provisioning yang ditulis.
-7. **State di app** — bagaimana app mengetahui bahwa user sudah bayar / aktif? (field di DB, session, JWT claim, dll.)
-8. **API key** — cek via `whoami`. Tanya hanya kalau invalid.
+1. **Model jualan** — apa yang dijual, dan bagaimana cara jualnya? (one-off, invoice, langganan, credit, lisensi)
+2. **CTA "Beli"** — tombol beli atau checkout mau ada di mana di app? (halaman yang sudah ada, halaman baru, modal, dll.)
+3. **Pricing page** — app perlu halaman pricing yang menampilkan plan/harga, atau sudah ada, atau tidak perlu?
+4. **Post-payment UX** — setelah bayar sukses, apa yang terjadi di UI? (redirect ke halaman tertentu, modal ditutup, halaman diupdate, dll.)
+5. **Fulfillment** — user mendapatkan akses ke apa setelah bayar? Ini menentukan kode provisioning yang ditulis.
+
+   ⚠️ **Fulfillment adalah keputusan user, bukan sesuatu yang bisa diinfer dari codebase.** Jangan tulis kode provisioning berdasarkan asumsi sendiri — selalu konfirmasi ke user, termasuk field DB, tier, atau kondisi khusus yang terlibat.
+
+6. **State di app** — bagaimana app mengetahui bahwa user sudah bayar / aktif? (field di DB, session, JWT claim, dll.)
+7. **API key** — cek via `whoami`. Tanya hanya kalau invalid.
 
 Done when: semua jawaban terdokumentasi di chat. User menjawab "terserah/default" pun sah — catat default yang dipakai.
 
@@ -87,14 +103,59 @@ Done when: semua jawaban terdokumentasi di chat. User menjawab "terserah/default
 
 ### Step 2: PLAN
 
-Setelah semua jawaban dari INTERVIEW terkumpul, buat rencana implementasi yang konkret:
+Sebelum menyusun plan, **baca schema API** yang akan dipakai:
+```
+npx -y mayar@latest docs <topic> --json
+```
+Contoh: `docs create-payment-link`, `docs create-invoice`, `docs create-membership`. Jangan menebak nama field — schema dibaca sekarang, bukan saat IMPLEMENT.
 
-- File baru yang akan dibuat, beserta tujuannya
-- File existing yang akan diubah, dan bagian mana yang berubah
-- Env var baru yang diperlukan
-- Urutan implementasi (dari mana mulai, dependensinya apa)
+Setelah schema dibaca, buat rencana implementasi menggunakan template berikut:
 
-Rencana harus mencakup keseluruhan flow — bukan hanya endpoint Mayar, tapi juga CTA, pricing page (bila diperlukan), webhook handler, dan wiring ke state/DB app user.
+---
+
+> ## Plan: Integrasi Mayar — [nama app]
+>
+> ### Konteks
+> [2-3 kalimat: apa yang diintegrasikan, model jualan, fulfillment yang disepakati]
+>
+> ### Schema API yang dipakai
+> [field utama dari hasil `mayar docs <topic>` — hanya yang relevan]
+>
+> ### File yang dibuat
+> | File | Tujuan |
+> |------|--------|
+> | `src/lib/mayar.ts` | Helper API (dari _pattern.md) |
+> | `src/routes/api/checkout.ts` | Endpoint create payment link/invoice |
+> | `src/routes/api/webhooks/mayar.ts` | Terima notifikasi + provisioning |
+> | [tambahan sesuai jawaban INTERVIEW] | [misal: pricing page, CTA component] |
+>
+> ### File yang diubah
+> | File | Perubahan |
+> |------|-----------|
+> | `.env` | Tambah MAYAR_API_KEY, MAYAR_ENV, APP_URL |
+> | `.gitignore` | Verifikasi env sudah tercakup |
+> | [halaman/komponen CTA] | Tambah tombol + handler ke /api/checkout |
+>
+> ### Env var baru
+> - `MAYAR_API_KEY` — key dari web.mayar.club (sandbox) atau web.mayar.id (production)
+> - `MAYAR_ENV` — `sandbox` atau `production`
+> - `APP_URL` — base URL untuk redirectUrl
+>
+> ### Fulfillment logic — konfirmasi dulu
+> Setelah status `paid`, rencana gue:
+> [tulis rencana konkret, contoh: "set field `isPro = true` di tabel `users` berdasarkan `customer.email`"]
+>
+> Ini benar? Kalau ada kondisi lain (tier, trial, kondisi khusus), sebut sekarang sebelum gue mulai.
+>
+> ### Urutan implementasi
+> 1. `lib/mayar.ts`
+> 2. `.env` + verifikasi `.gitignore`
+> 3. `api/checkout.ts`
+> 4. [CTA / pricing page jika diperlukan]
+> 5. `api/webhooks/mayar.ts` + fulfillment
+> 6. Register webhook + test sandbox
+
+---
 
 Tawarkan setelah plan selesai:
 > Plan ini mau disimpan ke codebase sebagai file `.md` (misal `docs/payment-plan.md`), atau cukup di chat saja?
@@ -108,9 +169,8 @@ Done when: user menyatakan plan sudah dipahami dan memberikan lampu hijau.
 
 ### Step 3: IMPLEMENT
 
-- Sebelum menulis request apa pun, baca schema resminya: `npx -y mayar@latest docs <topic> --json` (contoh: `docs create-payment-link`, `docs create-invoice`). Jangan menebak nama field.
-- Semua stack berbagi satu pola: `recipes/_pattern.md`. Kelayakan stack ditentukan oleh ada/tidaknya server runtime. SPA murni tanpa backend: wajib 1 function kecil, lihat `recipes/vite-react.md`.
-- Stack punya recipe (`recipes/nextjs.md`, `recipes/tanstack-start.md`, dst)? Ikuti wiring-nya. Belum ada recipe? Pakai `_pattern.md` langsung.
+- Semua stack berbagi satu pola: `recipes/_pattern.md`. Stack punya recipe? Ikuti wiring-nya. Belum ada recipe? Pakai `_pattern.md` langsung.
+- SPA murni tanpa backend: wajib 1 function kecil, lihat `recipes/vite-react.md`.
 - Implementasi harus mencakup seluruh yang ada di PLAN: endpoint Mayar, CTA button, pricing page (bila diperlukan), webhook handler, dan wiring ke state/DB app user. Jangan hanya kode Mayar-nya saja.
 - API key masuk `.env` (bukan source code), hanya dipakai di kode server, dan `.gitignore` sudah mencakup file env. Cek `.gitignore` secara eksplisit.
 
@@ -121,7 +181,7 @@ Done when: semua file dari PLAN sudah diimplementasi, kode compile/runtime, key 
 Aturan inti: **payload webhook = notifikasi, bukan bukti. Bukti ada di API.**
 
 - Handler webhook wajib re-fetch status transaksi/invoice via GET API (pakai Bearer key) sebelum provisioning. Klaim `paid` dari payload saja tidak cukup.
-- Provisioning harus idempotent: catat ID transaksi yang sudah diproses (tabel DB / store), kiriman webhook duplikat menghasilkan efek yang sama tanpa double-fulfill.
+- Provisioning harus idempotent: catat ID transaksi yang sudah diproses di **database** (bukan in-memory Set — tidak persist saat restart). Kiriman webhook duplikat menghasilkan efek yang sama tanpa double-fulfill.
 - Tambahkan komentar di handler: `// TODO: ganti verify-by-fetch dengan signature verification saat Mayar merilis HMAC webhook`.
 
 Done when: handler melakukan re-fetch, dan kiriman duplikat tidak memicu provisioning ganda (tunjukkan dengan test atau reasoning kode).

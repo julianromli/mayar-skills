@@ -68,8 +68,12 @@ interface WebhookPayload {
 }
 
 // TODO: ganti verify-by-fetch dengan signature verification saat Mayar merilis HMAC webhook.
-// Produksi: ganti Set dengan tabel DB processedTransactions.
-const processed = new Set<string>();
+// Dedupe via DB — Set tidak persist saat server restart, jangan dipakai di production.
+// Contoh Drizzle:
+//   await db.insert(processedTx).values({ txId: detail.id }).onConflictDoNothing()
+//   const existing = await db.query.processedTx.findFirst({ where: eq(processedTx.txId, detail.id) })
+//   if (existing) return Response.json({ ok: true })
+// Ganti blok `processed.has / processed.add` di bawah dengan query DB sesuai ORM kamu.
 
 async function fulfill(customerEmail: string, productId: string) {
   // PROVISIONING: idempotent.
