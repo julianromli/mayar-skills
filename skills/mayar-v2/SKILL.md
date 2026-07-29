@@ -1,12 +1,13 @@
 ---
 name: mayar-v2
 display_name: Mayar
-version: "1.0.0"
+version: "1.1.0"
 description: >
   Mayar payments & billing API (Indonesia: QRIS, VA, e-wallet, kartu).
   BUILD branch: pakai saat user minta integrasi pembayaran ditulis ke dalam app mereka
   (payment link, invoice, membership/subscription, credit wallet, software license,
-  webhook, checkout flow).
+  webhook, checkout flow) — all-in-one: wiring ke seluruh flow monetisasi user, bukan
+  hanya kode Mayar-nya saja.
   OPS branch: pakai saat user minta aksi admin/terminal di akun Mayar mereka
   (balance, list invoices/transactions/customers, buat produk, register webhook).
   Triggers: mayar, payment gateway indonesia, QRIS, billing, langganan, subscription,
@@ -22,7 +23,7 @@ env:
 
 Dua mode. Putuskan dulu sebelum bertindak:
 
-- **build** = menulis kode integrasi ke dalam app user. Ikuti playbook 6 step di bawah, berurutan.
+- **build** = menulis kode integrasi ke dalam app user — termasuk wiring ke flow monetisasi, CTA, dan halaman terkait. Bukan hanya kode Mayar-nya. Ikuti playbook 7 step di bawah, berurutan.
 - **ops** = menjalankan CLI di terminal untuk admin/testing. Lihat `commands.md`, atau sumber live-nya: `npx -y mayar@latest docs <topic>` dan `npx -y mayar@latest <command> --help`.
 
 CLI dipakai via `npx -y mayar@latest ...` (selalu latest, tanpa install). Di kode app: HTTP native (`fetch`/`axios`). CLI milik terminal.
@@ -51,32 +52,71 @@ Done when: `whoami` valid dan environment terpilih eksplisit.
 
 ### Step 0: RECON
 
-Scan proyek sebelum bertanya apa pun: framework & bahasa (package.json, composer.json, requirements.txt), package manager, file `.env*` yang ada (jangan baca isi secret, cukup catat nama var), direktori routes/api, dan kode pembayaran lama kalau ada.
+Scan proyek sebelum bertanya apa pun: framework & bahasa (package.json, composer.json, requirements.txt), package manager, file `.env*` yang ada (jangan baca isi secret, cukup catat nama var), direktori routes/api, halaman/komponen yang sudah ada (pricing, product, dashboard, landing), dan kode pembayaran lama kalau ada.
 
-Done when: kamu bisa menyebutkan stack, lokasi route handler, dan lokasi file env tanpa bertanya ke user.
+Done when: kamu bisa menyebutkan stack, lokasi route handler, lokasi file env, dan halaman-halaman yang relevan dengan monetisasi — tanpa bertanya ke user.
 
 ### Step 1: INTERVIEW
 
-Tanya dalam **satu batch**, tiap pertanyaan punya default. Skip yang sudah terjawab oleh RECON.
+Tanya **satu pertanyaan per pesan**. Tunggu jawaban user sebelum lanjut ke pertanyaan berikutnya. Jika fakta bisa ditemukan di codebase lewat RECON, gunakan itu — jangan tanya ulang. Sesuaikan pertanyaan lanjutan berdasarkan jawaban sebelumnya.
 
-1. **Environment** — sandbox dulu? (default: ya)
-2. **Model jualan** — one-off payment, invoice rinci, langganan membership, credit usage-based, atau lisensi software? (petakan ke: payment link / invoice / membership / credit / saas license)
-3. **Fulfillment** — setelah bayar sukses, customer dapat apa? (akses konten, download, upgrade akun). Jawaban ini menentukan kode provisioning.
-4. **URL publik** — app sudah punya domain live? Kalau belum: pakai mode polling status atau tunnel (ngrok/cloudflared).
-5. **API key** — cek dulu via `whoami` (Setup). Tanya user hanya kalau invalid.
+Setiap pertanyaan wajib menggunakan format pilihan ganda dengan jawaban recommended yang paling tepat (bukan paling mudah):
 
-Done when: 5 jawaban terdokumentasi di chat. User menjawab "terserah/default" pun sah — catat default-nya.
+> **[Pertanyaan singkat]**
+>
+> A) Opsi — penjelasan singkat
+> B) Opsi — penjelasan singkat
+> C) Opsi — penjelasan singkat
+>
+> Recommended: **[opsi]** — [alasan singkat].
 
-### Step 2: IMPLEMENT
+Urutan pertanyaan (skip yang sudah diketahui dari RECON):
+
+1. **Environment** — sandbox dulu, atau langsung production?
+2. **Model jualan** — apa yang dijual, dan bagaimana cara jualnya? (one-off, invoice, langganan, credit, lisensi)
+3. **CTA "Beli"** — tombol beli atau checkout mau ada di mana di app? (halaman yang sudah ada, halaman baru, modal, dll.)
+4. **Pricing page** — app perlu halaman pricing yang menampilkan plan/harga, atau sudah ada, atau tidak perlu?
+5. **Post-payment UX** — setelah bayar sukses, apa yang terjadi di UI? (redirect ke halaman tertentu, modal ditutup, halaman diupdate, dll.)
+6. **Fulfillment** — user mendapatkan akses ke apa setelah bayar? Ini menentukan kode provisioning yang ditulis.
+7. **State di app** — bagaimana app mengetahui bahwa user sudah bayar / aktif? (field di DB, session, JWT claim, dll.)
+8. **API key** — cek via `whoami`. Tanya hanya kalau invalid.
+
+Done when: semua jawaban terdokumentasi di chat. User menjawab "terserah/default" pun sah — catat default yang dipakai.
+
+**Jangan lakukan perubahan apa pun setelah INTERVIEW selesai. Lanjut ke PLAN.**
+
+### Step 2: PLAN
+
+Setelah semua jawaban dari INTERVIEW terkumpul, buat rencana implementasi yang konkret:
+
+- File baru yang akan dibuat, beserta tujuannya
+- File existing yang akan diubah, dan bagian mana yang berubah
+- Env var baru yang diperlukan
+- Urutan implementasi (dari mana mulai, dependensinya apa)
+
+Rencana harus mencakup keseluruhan flow — bukan hanya endpoint Mayar, tapi juga CTA, pricing page (bila diperlukan), webhook handler, dan wiring ke state/DB app user.
+
+Tawarkan setelah plan selesai:
+> Plan ini mau disimpan ke codebase sebagai file `.md` (misal `docs/payment-plan.md`), atau cukup di chat saja?
+
+Tutup dengan:
+> Ada yang kurang jelas atau perlu direvisi dari plan ini sebelum gue mulai?
+
+**Jangan mulai implementasi sampai user memberikan konfirmasi eksplisit bahwa plan sudah oke.**
+
+Done when: user menyatakan plan sudah dipahami dan memberikan lampu hijau.
+
+### Step 3: IMPLEMENT
 
 - Sebelum menulis request apa pun, baca schema resminya: `npx -y mayar@latest docs <topic> --json` (contoh: `docs create-payment-link`, `docs create-invoice`). Jangan menebak nama field.
-- Semua stack berbagi satu pola: `recipes/_pattern.md`. Kelayakan stack ditentukan oleh ada/tidaknya server runtime (create link, terima webhook, re-fetch status). SPA murni tanpa backend: wajib 1 function kecil, lihat `recipes/vite-react.md`.
-- Stack punya recipe (`recipes/nextjs.md`, `recipes/tanstack-start.md`, dst)? Ikuti wiring-nya. Belum ada recipe? Pakai `_pattern.md` langsung, tulis wiring framework-nya.
-- API key masuk `.env` (bukan source code), hanya dipakai di kode server (route handler, server action), dan `.gitignore` sudah mencakup file env. Cek `.gitignore` secara eksplisit.
+- Semua stack berbagi satu pola: `recipes/_pattern.md`. Kelayakan stack ditentukan oleh ada/tidaknya server runtime. SPA murni tanpa backend: wajib 1 function kecil, lihat `recipes/vite-react.md`.
+- Stack punya recipe (`recipes/nextjs.md`, `recipes/tanstack-start.md`, dst)? Ikuti wiring-nya. Belum ada recipe? Pakai `_pattern.md` langsung.
+- Implementasi harus mencakup seluruh yang ada di PLAN: endpoint Mayar, CTA button, pricing page (bila diperlukan), webhook handler, dan wiring ke state/DB app user. Jangan hanya kode Mayar-nya saja.
+- API key masuk `.env` (bukan source code), hanya dipakai di kode server, dan `.gitignore` sudah mencakup file env. Cek `.gitignore` secara eksplisit.
 
-Done when: kode integrasi ada dan jalan (compile/runtime), key di env, gitignore terverifikasi.
+Done when: semua file dari PLAN sudah diimplementasi, kode compile/runtime, key di env, gitignore terverifikasi.
 
-### Step 3: SECURE
+### Step 4: SECURE
 
 Aturan inti: **payload webhook = notifikasi, bukan bukti. Bukti ada di API.**
 
@@ -86,7 +126,7 @@ Aturan inti: **payload webhook = notifikasi, bukan bukti. Bukti ada di API.**
 
 Done when: handler melakukan re-fetch, dan kiriman duplikat tidak memicu provisioning ganda (tunjukkan dengan test atau reasoning kode).
 
-### Step 4: VERIFY
+### Step 5: VERIFY
 
 Buktikan end-to-end di sandbox:
 
@@ -97,7 +137,7 @@ Buktikan end-to-end di sandbox:
 
 Done when: transaksi sandbox mencapai `paid` dan jalur provisioning app terbukti tereksekusi (atau terbukti via dry-run).
 
-### Step 5: HANDOFF
+### Step 6: HANDOFF
 
 Laporkan ke user: file apa yang dibuat/diubah, env var apa yang harus diisi, dan checklist go-live:
 
@@ -119,7 +159,7 @@ Untuk parsing programatik, tambahkan `--json`.
 
 ---
 
-## Reference (inline, satu-satunya situs)
+## Reference (inline, satu-satunya sumber)
 
 **Base URL** — production `https://api.mayar.id/hl/v2`, sandbox `https://api.mayar.club/hl/v2`.
 
