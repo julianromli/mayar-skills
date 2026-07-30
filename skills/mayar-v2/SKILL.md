@@ -243,6 +243,16 @@ Untuk parsing programatik, tambahkan `--json`.
 | VA CIMB Niaga | `"va/cimb"` |
 | VA Permata | `"va/permata"` |
 
-Pola: `"va/{bank_code_lowercase}"`. `paymentDetail` ada di create response langsung — tidak perlu GET ulang setelah create. Parsing: `data.paymentDetail.virtual_account.channel_properties.virtual_account_number` dan `.customer_name`. Minimum panjang value: 3 karakter (`"va"` saja ditolak dengan Validation Error).
+| E-wallet DANA | `"ewallet/dana"` |
+| E-wallet OVO | `"ewallet/ovo"` |
+| E-wallet ShopeePay | `"ewallet/shopeepay"` |
+| E-wallet LinkAja | `"ewallet/linkaja"` |
+| E-wallet GoPay | `"ewallet/gopay"` (butuh aktivasi terpisah) |
 
-**Sandbox VA/QRIS** — `GET /payment-channels` return `data: null` di sandbox meski dashboard menampilkan semua channel aktif. Create invoice dengan `paymentMethod` spesifik juga gagal di sandbox. Gunakan production key untuk test VA/QRIS end-to-end.
+Pola: `"va/{bank_code_lowercase}"` dan `"ewallet/{wallet_code_lowercase}"`. `paymentDetail` ada di create response langsung — tidak perlu GET ulang setelah create. 
+
+**E-wallet flow berbeda dari QRIS/VA** — tidak ada QR/nomor rekening. Response berisi `paymentDetail.actions[]` dengan dua URL: `url_type: "WEB"` untuk browser, `url_type: "MOBILE"` untuk deeplink ke app. Parsing: `data.paymentDetail.actions.find(a => a.url_type === "MOBILE").url`.
+
+VA parsing: `data.paymentDetail.virtual_account.channel_properties.virtual_account_number` dan `.customer_name`. Minimum panjang value: 3 karakter (`"va"` saja ditolak dengan Validation Error).
+
+**Sandbox VA/QRIS** — `GET /payment-channels` return `data: null` di sandbox meski dashboard menampilkan semua channel aktif. Create invoice dengan `paymentMethod` spesifik juga gagal di sandbox. Gunakan production key untuk test VA/QRIS/ewallet end-to-end.
