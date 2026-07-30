@@ -230,3 +230,19 @@ Untuk parsing programatik, tambahkan `--json`.
 **Payment link name unik** — Mayar tolak create dengan error `"already exist"` kalau nama sama pernah dipakai. Selalu append timestamp atau UUID: `name: \`${productName} #${Date.now()}\``. Error ini muncul sebagai HTTP 200 dengan `statusCode: 429` di body.
 
 **Rate limit** — 50 req/menit per API key, header `Retry-After` disediakan. Jarakkan polling status ≥ 5 detik.
+
+**`paymentMethod` untuk invoice** — format tidak terdokumentasi di public docs, hasil live testing production:
+
+| Method | `paymentMethod` value |
+|--------|----------------------|
+| QRIS | `"qris"` (lowercase) |
+| VA BNI | `"va/bni"` |
+| VA Mandiri | `"va/mandiri"` |
+| VA BRI | `"va/bri"` |
+| VA BSI | `"va/bsi"` |
+| VA CIMB Niaga | `"va/cimb"` |
+| VA Permata | `"va/permata"` |
+
+Pola: `"va/{bank_code_lowercase}"`. `paymentDetail` ada di create response langsung — tidak perlu GET ulang setelah create. Parsing: `data.paymentDetail.virtual_account.channel_properties.virtual_account_number` dan `.customer_name`. Minimum panjang value: 3 karakter (`"va"` saja ditolak dengan Validation Error).
+
+**Sandbox VA/QRIS** — `GET /payment-channels` return `data: null` di sandbox meski dashboard menampilkan semua channel aktif. Create invoice dengan `paymentMethod` spesifik juga gagal di sandbox. Gunakan production key untuk test VA/QRIS end-to-end.

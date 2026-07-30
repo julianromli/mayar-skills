@@ -18,12 +18,12 @@ APP_URL=http://localhost:3000
 
 ```ts
 import { createFileRoute } from "@tanstack/react-router";
-import { createPaymentLink } from "../../lib/mayar"; // dari _pattern.md
-
+```ts
 export const Route = createFileRoute("/api/checkout")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        const body = (await request.json()) as CheckoutBody;
         const product = await createPaymentLink({
           name: "Akses Pro 1 Bulan",
           description: "Upgrade ke Pro",
@@ -36,6 +36,15 @@ export const Route = createFileRoute("/api/checkout")({
   },
 });
 ```
+
+> **`paymentMethod` values (tidak terdokumentasi di public docs — verified production):**
+> - QRIS: `"qris"` (lowercase)
+> - VA BNI: `"va/bni"` — pola `"va/{bank_code_lowercase}"`
+> - VA Mandiri: `"va/mandiri"`
+> - VA BRI: `"va/bri"`, VA BSI: `"va/bsi"`, VA CIMB: `"va/cimb"`, VA Permata: `"va/permata"`
+>
+> `paymentDetail` tersedia langsung di create response — tidak perlu GET ulang.
+> Sandbox tidak support `paymentMethod` spesifik (semua return 400). Test VA/QRIS harus pakai production key.
 
 ## Tombol beli (client)
 
