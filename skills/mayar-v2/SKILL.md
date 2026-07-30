@@ -87,15 +87,22 @@ Setiap pertanyaan wajib menggunakan format pilihan ganda dengan jawaban recommen
 Urutan pertanyaan (skip yang sudah diketahui dari RECON):
 
 1. **Model jualan** — apa yang dijual, dan bagaimana cara jualnya? (one-off, invoice, langganan, credit, lisensi)
-2. **CTA "Beli"** — tombol beli atau checkout mau ada di mana di app? (halaman yang sudah ada, halaman baru, modal, dll.)
-3. **Pricing page** — app perlu halaman pricing yang menampilkan plan/harga, atau sudah ada, atau tidak perlu?
-4. **Post-payment UX** — setelah bayar sukses, apa yang terjadi di UI? (redirect ke halaman tertentu, modal ditutup, halaman diupdate, dll.)
-5. **Fulfillment** — user mendapatkan akses ke apa setelah bayar? Ini menentukan kode provisioning yang ditulis.
+2. **Checkout experience** — tampilan checkout yang diinginkan?
+
+   > A) **Custom UI native** — form, QR code, VA number, dan deeplink ewallet semuanya tampil di dalam app sendiri. Lebih banyak kode, tapi brand konsisten dan UX full control. Pakai invoice API (`POST /invoices/create`).
+   > B) **Hosted Mayar page** — redirect atau iframe ke halaman checkout Mayar. Lebih cepat dan less code, Mayar handle semua edge case. Pakai payment link API.
+   >
+   > Recommended: **A** untuk produk production dengan brand kuat. **B** untuk MVP/POC atau kalau kecepatan shipping prioritas.
+
+3. **CTA "Beli"** — tombol beli atau checkout mau ada di mana di app? (halaman yang sudah ada, halaman baru, modal, dll.)
+4. **Pricing page** — app perlu halaman pricing yang menampilkan plan/harga, atau sudah ada, atau tidak perlu?
+5. **Post-payment UX** — setelah bayar sukses, apa yang terjadi di UI? (redirect ke halaman tertentu, modal ditutup, halaman diupdate, dll.)
+6. **Fulfillment** — user mendapatkan akses ke apa setelah bayar? Ini menentukan kode provisioning yang ditulis.
 
    ⚠️ **Fulfillment adalah keputusan user, bukan sesuatu yang bisa diinfer dari codebase.** Jangan tulis kode provisioning berdasarkan asumsi sendiri — selalu konfirmasi ke user, termasuk field DB, tier, atau kondisi khusus yang terlibat.
 
-6. **State di app** — bagaimana app mengetahui bahwa user sudah bayar / aktif? (field di DB, session, JWT claim, dll.)
-7. **API key** — cek via `whoami`. Tanya hanya kalau invalid.
+7. **State di app** — bagaimana app mengetahui bahwa user sudah bayar / aktif? (field di DB, session, JWT claim, dll.)
+8. **API key** — cek via `whoami`. Tanya hanya kalau invalid.
 
 Done when: semua jawaban terdokumentasi di chat. User menjawab "terserah/default" pun sah — catat default yang dipakai.
 
