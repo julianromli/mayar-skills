@@ -262,4 +262,6 @@ Pola: `"va/{bank_code_lowercase}"` dan `"ewallet/{wallet_code_lowercase}"`. `pay
 
 VA parsing: `data.paymentDetail.virtual_account.channel_properties.virtual_account_number` dan `.customer_name`. Minimum panjang value: 3 karakter (`"va"` saja ditolak dengan Validation Error).
 
-**Sandbox VA/QRIS** — `GET /payment-channels` return `data: null` di sandbox meski dashboard menampilkan semua channel aktif. Create invoice dengan `paymentMethod` spesifik juga gagal di sandbox. Gunakan production key untuk test VA/QRIS/ewallet end-to-end.
+**Sandbox domain baru (Aug 2026)** — `api.mayar.io/hl/v2` (dashboard: `web.mayar.io`). Domain lama `api.mayar.club` masih ada tapi channels selalu `null`. Pakai `.io`.
+
+**Sandbox QRIS/VA quirk** — `POST /invoices/create` di `api.mayar.io` butuh `Cookie: connect.sid=...` di samping Bearer token. Tanpa cookie → 502 Bad Gateway untuk QRIS. Ambil cookie dari browser session `web.mayar.io` (DevTools → Application → Cookies). Simpan ke env `MAYAR_SANDBOX_COOKIE` dan inject ke request hanya di sandbox. `qr_string` sandbox return mock value `"some-random-qr-string"` — ini normal, bukan bug.
