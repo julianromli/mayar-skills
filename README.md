@@ -1,37 +1,54 @@
 # Mayar Skills
 
-Agent skills untuk integrasi [Mayar](https://mayar.id) (payment & billing Indonesia: QRIS, VA, e-wallet, kartu) di AI coding tools (Claude Code, Cursor, Codex, OpenCode).
+Agent skills for [Mayar](https://mayar.id) payment and billing integrations in
+Indonesia. The skills support QRIS, virtual accounts, e-wallets, and cards in
+Claude Code, Cursor, Codex, and OpenCode.
 
-> Status: **draft v2, belum rilis resmi**. Feedback & PR welcome.
+> Status: **Draft v2. This is not an official release.** Feedback and pull
+> requests are welcome.
 
-## Isi
+## Contents
 
 ```
 skills/
 └── mayar-v2/
-    ├── SKILL.md                 playbook utama: 6 step (RECON → INTERVIEW → IMPLEMENT → SECURE → VERIFY → HANDOFF)
-    ├── commands.md              katalog CLI (branch ops)
-    └── recipes/
-        ├── _pattern.md          pola integrasi framework-agnostic (single source of truth)
-        ├── nextjs.md            wiring Next.js App Router
-        ├── tanstack-start.md    wiring TanStack Start server routes
-        └── vite-react.md        React Vite SPA (via serverless function / mini server)
+    ├── SKILL.md                    router BUILD/OPS
+    ├── playbook/
+    │   ├── discover.md             RECON + INTERVIEW
+    │   ├── plan.md                 schema + approval gate
+    │   ├── implement.md            auth + implementation
+    │   └── verify.md               verification + handoff
+    ├── references/
+    │   ├── api-sources.md          docs source map
+    │   ├── cli-commands.md         OPS command catalog
+    │   ├── webhook-safety.md       fail-closed + idempotency
+    │   ├── stack-pattern.md        generic server contract
+    │   ├── stack-nextjs.md
+    │   ├── stack-tanstack-start.md
+    │   └── stack-vite-react.md
+    └── scripts/
+        └── validate.mjs            structural drift validator
 ```
 
-## Bedanya dengan skill resmi (v1)
+## Difference from the official v1 skill
 
-Skill resmi [`mayarid/mayar-cli`](https://github.com/mayarid/mayar-cli) adalah referensi CLI untuk admin/ops. Draft v2 ini menambahkan **playbook integrasi** untuk vibe coder & AI agent:
+The official [`mayarid/mayar-cli`](https://github.com/mayarid/mayar-cli) skill
+provides a CLI reference for account operations. This draft adds an integration
+playbook for coding agents:
 
-- **RECON**: agent scan codebase dulu (stack, env, routes) sebelum bertanya
-- **INTERVIEW**: 5 pertanyaan satu batch, semua ada default (env, model jualan, fulfillment, URL publik, API key)
-- **IMPLEMENT**: recipe per stack, schema resmi dibaca via `mayar docs`, bukan menebak field
-- **SECURE**: webhook wajib verify-by-fetch (payload = notifikasi, bukti = re-fetch API), provisioning idempotent
-- **VERIFY**: test end-to-end di sandbox, bukti ditunjukkan ke user
-- **HANDOFF**: checklist go-live ke production
+- **Progressive disclosure**: `SKILL.md` is only a router. The agent loads
+  details for the active phase.
+- **Strict gates**: The agent completes Discover, Plan, Implement, and Verify in
+  sequence.
+- **Live schema**: The agent reads endpoints from the Mayar V2 documentation.
+  It does not use a local schema snapshot.
+- **Conditional security**: The agent loads webhook safety instructions only
+  for a webhook flow.
+- **Portable OPS**: The CLI catalog is separate from API facts.
 
-Tiap step punya completion criterion yang checkable. Prinsip penulisan mengikuti rubrik [writing-great-skills](https://github.com/anthropics/skills) (predictability, information hierarchy, no duplication).
-
-Snippet TanStack Start & Cloudflare Workers sudah diverifikasi terhadap docs resmi via Context7.
+Each phase has one completion criterion. The structure follows the
+[Agent Skills Specification](https://agentskills.io/specification),
+progressive disclosure, and a single source of truth.
 
 ## Install
 
@@ -39,7 +56,7 @@ Snippet TanStack Start & Cloudflare Workers sudah diverifikasi terhadap docs res
 git clone https://github.com/julianromli/mayar-skills.git
 cd mayar-skills
 
-# Claude Code (backup dulu kalau ada v1)
+# Claude Code (back up an existing v1 skill first)
 cp -r skills/mayar-v2 ~/.claude/skills/mayar
 
 # Cursor (global)
@@ -55,69 +72,87 @@ cp -r skills/mayar-v2 ~/.codex/skills/mayar
 cp -r skills/mayar-v2 ~/.hermes/skills/mayar
 ```
 
-Reload/restart agent setelah copy.
+Reload or restart the agent after the copy operation.
 
-## Pemakaian
+## Usage
 
-### Build (integrasi ke app)
+### BUILD: application integration
 
-Prompt umum, agent menjalankan playbook lengkap (recon → interview → implement → secure → verify → handoff):
+For this prompt, the agent runs Discover, Plan, Implement, and Verify:
 
 ```
-integrasi payment Mayar di web ini
+Add Mayar payments to this website.
 ```
 
-Variasi per model jualan (jawaban INTERVIEW menentukan endpoint yang dipakai):
+The sales model determines the endpoint:
 
-| Contoh prompt | Model | Endpoint utama |
+| Example prompt | Model | Main endpoint |
 |---|---|---|
-| `pasang pembayaran buat jual ebook saya` | One-off payment | payment link |
-| `buatkan halaman checkout produk digital, habis bayar user dapat link download` | One-off + fulfillment | payment link + webhook provisioning |
-| `integrasi invoice Mayar, saya freelancer mau tagih klien per project` | Invoice itemized | invoice create + `extraData` |
-| `buat sistem langganan bulanan untuk konten premium saya` | Membership/subscription | membership register + invoice per term |
-| `user beli credit, tiap panggil fitur AI credit-nya kepotong` | Credit usage-based | credit add/spend/balance |
-| `jual lisensi software, user aktivasi pakai kode lisensi` | SaaS/software license | saas activate/verify |
-| `buat QRIS on-demand di kasir untuk nominal berapapun` | QRIS dynamic | qrcode create |
+| `Add payments so that I can sell an ebook.` | One-time payment | Payment link |
+| `Create a digital-product checkout. Give the user a download link after payment.` | One-time payment and fulfillment | Payment link and webhook provisioning |
+| `Add Mayar invoices for project-based client billing.` | Itemized invoice | Invoice create and `extraData` |
+| `Create a monthly subscription for premium content.` | Membership or subscription | Membership register and invoice per term |
+| `Let users buy credit. Deduct credit for each AI request.` | Credit usage | Credit add, spend, and balance |
+| `Sell software licenses that users activate with a code.` | SaaS or software license | SaaS activate and verify |
+| `Create an on-demand QRIS payment for a cash register.` | Dynamic QRIS | QR code create |
 
-Variasi per situasi:
+The project situation determines the reference:
 
-| Contoh prompt | Yang terjadi |
+| Example prompt | Agent action |
 |---|---|
-| `integrasi payment Mayar, jawab default semua` | Agent jalan pakai semua default INTERVIEW (sandbox, payment link, dst) |
-| `web saya TanStack Start, pasang payment Mayar` | Agent ikut `recipes/tanstack-start.md` |
-| `project saya React Vite doang, bisa terima pembayaran?` | Agent jelaskan butuh 1 function kecil, ikut `recipes/vite-react.md` |
-| `webhook pembayaran saya kok double terus, cek` | Agent audit handler: dedupe + verify-by-fetch (Step SECURE) |
-| `siapkan go-live, sekarang masih sandbox` | Agent kerjakan checklist HANDOFF: ganti key production, register webhook production |
+| `Add Mayar payments. Use the recommended options.` | Use the recommended interview choices. |
+| `My website uses TanStack Start. Add Mayar payments.` | Load `references/stack-tanstack-start.md` during Implement. |
+| `My project is a React Vite SPA. Can it accept payments?` | Explain the server-runtime requirement from `stack-vite-react.md`. |
+| `My payment webhook runs fulfillment twice. Check it.` | Load `references/webhook-safety.md`. |
+| `Prepare this sandbox integration for production.` | Run Verify and provide the production checklist. |
 
-### Ops (admin terminal)
+### OPS: account operations
 
-Agent menjalankan CLI langsung. Contoh:
+The agent runs the CLI directly:
 
-| Contoh prompt | Command yang jalan |
+| Example prompt | Command |
 |---|---|
-| `saldo mayar saya berapa` | `mayar balance` |
-| `cek 10 invoice terakhir` | `mayar invoice list --limit 10` |
-| `transaksi hari ini gimana` | `mayar tx daily` |
-| `ada berapa transaksi belum dibayar` | `mayar tx unpaid` |
-| `buatkan produk membership tiers-nya 3` | `mayar product create --type membership` |
-| `register webhook https://app.com/hooks/mayar` | `mayar webhook register <url>` |
-| `webhook terakhir gagal mana, retry` | `mayar webhook history` + `mayar webhook retry <id>` |
-| `cari customer email budi@gmail.com` | `mayar customer search budi@gmail.com` |
-| `kirim magic link portal ke customer itu` | `mayar customer magic-link <email>` |
-| `buat QRIS 50 ribu` | `mayar qrcode 50000` |
-| `verifikasi kode lisensi ABC123 untuk produk X` | `mayar saas verify ABC123 <productId>` |
-| `pindah ke sandbox dulu` | semua command jalan dengan `--sandbox` |
+| `Show my Mayar balance.` | `mayar balance` |
+| `Show the last 10 invoices.` | `mayar invoice list --limit 10` |
+| `Show today's transactions.` | `mayar tx daily` |
+| `Show unpaid transactions.` | `mayar tx unpaid` |
+| `Create a membership product with three tiers.` | `mayar product create --type membership` |
+| `Register the webhook https://app.com/hooks/mayar.` | `mayar webhook register <url>` |
+| `Find and retry the last failed webhook.` | `mayar webhook history` and `mayar webhook retry <id>` |
+| `Find the customer with email budi@gmail.com.` | `mayar customer search budi@gmail.com` |
+| `Send that customer a portal magic link.` | `mayar customer magic-link <email>` |
+| `Create a QRIS payment for IDR 50,000.` | `mayar qrcode 50000` |
+| `Verify license ABC123 for product X.` | `mayar saas verify ABC123 <productId>` |
+| `Use sandbox.` | Set `MAYAR_API_URL=https://api.mayar.io/hl/v2`, then use `--sandbox`. |
 
-## Prasyarat
+## Prerequisites
 
-- Node.js 18+ (CLI jalan via `npx -y mayar@latest`)
-- API key Mayar: [web.mayar.id](https://web.mayar.id) → Integration → API Key (sandbox: [web.mayar.club](https://web.mayar.club))
+- Network access to the Mayar documentation and API.
+- Node.js 18 or later for the OPS branch and bundled validator.
+- A Mayar API key from [web.mayar.id](https://web.mayar.id/api-keys) for
+  production or [web.mayar.io](https://web.mayar.io/api-keys) for sandbox.
 
-## Batasan diketahui (menunggu API)
+## Known API limits
 
-- Webhook belum punya signature HMAC → skill memakai pola verify-by-fetch, siap dimigrasi saat Mayar merilis signature
-- Belum ada SDK resmi → recipe memakai `fetch` native dengan helper kecil
-- `version: 2.0.0-draft` di frontmatter menandai ini bukan rilis resmi Mayar
+- The public webhook documentation does not define a transaction ID field. The
+  skill uses a fail-closed flow until documentation or an actual sample payload
+  verifies the mapping.
+- Mayar does not provide an official SDK. Stack references use native `fetch`
+  with a small helper.
+- `metadata.version` is the skill version. It is not the Mayar product version.
+
+## Validate the skill
+
+From the repository root:
+
+```bash
+node skills/mayar-v2/scripts/validate.mjs
+skills-ref validate ./skills/mayar-v2
+```
+
+The bundled validator checks frontmatter, structure, links, Markdown fences,
+router size, and stale facts. `skills-ref` checks compatibility with the
+official format.
 
 ## License
 
