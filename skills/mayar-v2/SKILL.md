@@ -228,7 +228,7 @@ Untuk parsing programatik, tambahkan `--json`.
 
 ## Reference (inline, satu-satunya sumber)
 
-**Base URL** — production `https://api.mayar.id/hl/v2`, sandbox `https://api.mayar.club/hl/v2`.
+**Base URL** — production `https://api.mayar.id/hl/v2`, sandbox `https://api.mayar.io/hl/v2` (web: `web.mayar.io`, key dari `web.mayar.io/api-keys` — domain diupdate Jul 2026, sebelumnya `api.mayar.club`).
 
 **Envelope V2** — `{ statusCode, messages, data }`. Sebagian write endpoint memakai `message` (singular). Parse defensif: `body.messages ?? body.message`. Tanggal: beberapa endpoint menerima ISO 8601 tapi mengembalikan epoch ms (`expiredAt`); normalisasi di sisi client.
 
