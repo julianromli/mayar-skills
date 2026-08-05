@@ -14,8 +14,12 @@ for each required operation:
    errors.
 4. Do not use model memory, old snapshots, or V1 documentation.
 
-If the documentation does not define a required field, record a blocker or use
-a fail-closed flow. Do not estimate the field.
+If the documentation does not define a required field, check
+[undocumented quirks](../references/undocumented-quirks.md) before recording a
+blocker — some fields (e.g. `paymentMethod` values, membership tier pricing)
+are verified through live testing but absent from the public docs. If the field
+is not there either, record a blocker or use a fail-closed flow. Do not
+estimate the field.
 
 ## Create the plan
 

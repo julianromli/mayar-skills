@@ -54,3 +54,10 @@ Find the current page through `llms.txt`. Relevant page groups include:
 
 Read field lists such as `paymentMethod` from the endpoint page during the task.
 Do not copy these lists to a local reference.
+
+If the endpoint page does not document a field or accepted value you need
+(this happens — e.g. `paymentMethod` channel codes for VA/e-wallet, membership
+tier pricing fields), check
+[undocumented quirks](undocumented-quirks.md) before treating it as unsupported.
+That file holds behavior confirmed through live testing that Mayar has not
+published yet.
